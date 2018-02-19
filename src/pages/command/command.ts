@@ -1,57 +1,141 @@
 import { Component } from '@angular/core';
-import { NavController, NavParams, Platform } from 'ionic-angular';
+import { NavController, NavParams, Platform, ActionSheetController } from 'ionic-angular';
 import { BluetoothSerial } from '@ionic-native/bluetooth-serial';
 
 @Component({
-  selector: 'page-list',
-  templateUrl: 'list.html'
+  selector: 'page-command',
+  templateUrl: 'command.html'
 })
-export class ListPage {
+export class CommandPage {
   selectedItem: any;
   icons: string[];
-  items: Array<{code: number, title: string, note: string, icon: string}>;
-  isPlatforReady: boolean;
+  items: Array<{ code: number, title: string, note: string, icon: string }>;
 
   constructor(
-    public navController: NavController, 
-    public navParams: NavParams, 
+    public navController: NavController,
+    public navParams: NavParams,
     private bluetoothSerial: BluetoothSerial,
-    private platform: Platform) {
-      this.platform.ready().then(() => {
-        this.selectedItem = navParams.get('item');
-        this.items =[
-          {code: 0, title: "Initialize", note: "Initialize Bluetooth", icon: "bluetooth"}
-        ];
-      }).catch(error => {
-        this.isPlatforReady = false;
-        console.log("Cannot initialize platform due error: " + error);
-      });
+    private platform: Platform,
+    public actionSheetController: ActionSheetController) {
+    this.selectedItem = navParams.get('item');
+    this.items = [
+      { code: 0, title: "Enable", note: "Bluetooth Enable", icon: "bluetooth" },
+      { code: 1, title: "List", note: "Bluetooth List", icon: "bluetooth" }
+    ];
   }
 
-  itemTapped(event, item) {
-    this.navController.push(ListPage, {
+  async itemTapped(event, item) {
+    this.navController.push(CommandPage, {
       item: item
     });
-    if (item.code == 0){
-      this.initialize();
+    let enable = await this.enable();
+    if (enable != null) return;
+    switch (item.code) {
+      case 0: {
+        if (enable == null) {
+          console.log("Bluetooth enabled.");
+        }
+        break;
+      }
+      case 1: {
+        await this.list();
+        break;
+      }
     }
   }
 
-  checkPlatfor(){
-    if (!this.isPlatforReady){
-      console.log("Platform not initialized.");
-    }
+  enablePromise() {
+    return new Promise((resolve, reject) => {
+      this.platform.ready().then(() => {
+        this.bluetoothSerial.isEnabled().then(() => {
+          resolve();
+        }).catch(() => {
+          this.bluetoothSerial.enable().then(() => {
+            resolve();
+          }).catch(exception => {
+            reject("Bluetooth not enabled due error: " + exception);
+          })
+        })
+      }).catch(exception => {
+        reject("Platform not ready due error: " + exception);
+      })
+    });
   }
 
-  initialize(){
+  async enable() {
+    let enable = null;
+    try {
+      await this.enablePromise();
+    }
+    catch (exception) {
+      enable = exception;
+      console.error(exception);
+    }
+    return enable;
+  }
 
+  async list() {
+    let list = await this.bluetoothSerial.list();
+    let buttons = Array<any>();
+    list.map(device => {
+      buttons.push({
+        text: device.name,
+        handler: () => {
+          this.connect(device);
+        }
+      })
+    });
+    buttons.push({
+      text: 'Cancel',
+      role: 'cancel'
+    });
+    let actionSheet = this.actionSheetController.create({
+      title: 'Devices',
+      buttons: buttons
+    });
+    actionSheet.present();
+  }
+
+  connectSubscribe(device: any, resolve, reject) {
+    this.bluetoothSerial.connect(device.address).subscribe(() => {
+      resolve();
+    }, exception => {
+      reject("Bluetooth device not connected due error: " + exception);
+    });
+  }
+
+  connectPromise(device: any) {
+    return new Promise((resolve, reject) => {
+      this.bluetoothSerial.isConnected().then(isConnected => {
+        this.bluetoothSerial.disconnect().then(() => {
+          this.connectSubscribe(device, resolve, reject);
+        }).catch(exception => {
+          reject("Bluetooth device not disconnected due error: " + exception);
+        })
+      }).catch(() => {
+        this.connectSubscribe(device, resolve, reject);
+      })
+    });
+  }
+
+  async connect(device: any) {
+    let connect = null;
+    try {
+      await this.connectPromise(device);
+      console.log("Device connected.");
+    }
+    catch (exception) {
+      connect = exception;
+      console.error(exception);
+    }
+    return connect;
   }
 
   initNativeHardware() {
     this.platform.ready().then(() => {
-      this.bluetoothSerial.list().then((list : Array<any>) => {
+      this.bluetoothSerial.list().then((list: Array<any>) => {
         if (list && list.length > 0) {
-          this.bluetoothSerial.connect(list.find(x=>x.name == 'ZK00809320').address).subscribe(res => {
+          this.bluetoothSerial.connect(list.find(x => x.name == 'ZK00809320').address).subscribe(res => {
             console.log(res);
             this.bluetoothSerial.isConnected().then(isConnected => {
               console.log('isConnected', isConnected);
@@ -144,7 +228,7 @@ export class ListPage {
 
     // this.raw_data = new Uint8Array((raw as ArrayBuffer).slice(1, raw.byteLength - 1));
 
-  //  debugger;
+    //  debugger;
 
     // Array.Copy(data_cmd, 0, data, 3, data_cmd.Length);
     this.MakeCRC(data, 1, data_len);
