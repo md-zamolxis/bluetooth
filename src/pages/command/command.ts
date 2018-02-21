@@ -1,6 +1,9 @@
 import { Component } from '@angular/core';
 import { NavController, NavParams, Platform, ActionSheetController } from 'ionic-angular';
 import { BluetoothSerial } from '@ionic-native/bluetooth-serial';
+import { Message } from '../../app/message';
+import { TremolElicomFPDriver } from '../../bluetooth.serial.driver/tremol.elicom.fp/tremol.elicom.fp.driver';
+import { Configuration } from '../../bluetooth.serial.driver/configuration';
 
 @Component({
   selector: 'page-command',
@@ -14,13 +17,14 @@ export class CommandPage {
   constructor(
     public navController: NavController,
     public navParams: NavParams,
-    private bluetoothSerial: BluetoothSerial,
-    private platform: Platform,
+    public bluetoothSerial: BluetoothSerial,
     public actionSheetController: ActionSheetController) {
     this.selectedItem = navParams.get('item');
     this.items = [
-      { code: 0, title: "Enable", note: "Bluetooth Enable", icon: "bluetooth" },
-      { code: 1, title: "List", note: "Bluetooth List", icon: "bluetooth" }
+      { code: 0, title: 'Enable', note: 'Bluetooth Enable', icon: 'bluetooth' },
+      { code: 1, title: 'List', note: 'Bluetooth List', icon: 'bluetooth' },
+      { code: 2, title: 'Command', note: 'Bluetooth Command', icon: 'bluetooth' },
+      { code: 9, title: 'Example', note: 'Bluetooth Example', icon: 'bluetooth' }
     ];
   }
 
@@ -28,17 +32,21 @@ export class CommandPage {
     this.navController.push(CommandPage, {
       item: item
     });
-    let enable = await this.enable();
-    if (enable != null) return;
+    let driver = new TremolElicomFPDriver(this.bluetoothSerial);
     switch (item.code) {
       case 0: {
-        if (enable == null) {
-          console.log("Bluetooth enabled.");
-        }
         break;
       }
       case 1: {
         await this.list();
+        break;
+      }
+      case 2: {
+        await this.write();
+        break;
+      }
+      case 9: {
+        //this.initNativeHardware();
         break;
       }
     }
@@ -46,18 +54,14 @@ export class CommandPage {
 
   enablePromise() {
     return new Promise((resolve, reject) => {
-      this.platform.ready().then(() => {
-        this.bluetoothSerial.isEnabled().then(() => {
+      this.bluetoothSerial.isEnabled().then(() => {
+        resolve();
+      }).catch(() => {
+        this.bluetoothSerial.enable().then(() => {
           resolve();
-        }).catch(() => {
-          this.bluetoothSerial.enable().then(() => {
-            resolve();
-          }).catch(exception => {
-            reject("Bluetooth not enabled due error: " + exception);
-          })
+        }).catch(exception => {
+          reject(Message.initException('BluetoothSerial', 'isEnabled', exception));
         })
-      }).catch(exception => {
-        reject("Platform not ready due error: " + exception);
       })
     });
   }
@@ -69,7 +73,7 @@ export class CommandPage {
     }
     catch (exception) {
       enable = exception;
-      console.error(exception);
+      console.error(Message.formatException(exception));
     }
     return enable;
   }
@@ -97,20 +101,22 @@ export class CommandPage {
   }
 
   connectSubscribe(device: any, resolve, reject) {
-    this.bluetoothSerial.connect(device.address).subscribe(() => {
+    let connectSubscribe = this.bluetoothSerial.connect(device.address).subscribe(() => {
+      connectSubscribe.unsubscribe();
       resolve();
     }, exception => {
-      reject("Bluetooth device not connected due error: " + exception);
+      connectSubscribe.unsubscribe();
+      reject(Message.initException('BluetoothSerial', 'connect', exception));
     });
   }
 
   connectPromise(device: any) {
     return new Promise((resolve, reject) => {
-      this.bluetoothSerial.isConnected().then(isConnected => {
+      this.bluetoothSerial.isConnected().then(() => {
         this.bluetoothSerial.disconnect().then(() => {
           this.connectSubscribe(device, resolve, reject);
         }).catch(exception => {
-          reject("Bluetooth device not disconnected due error: " + exception);
+          reject(Message.initException('BluetoothSerial', 'disconnect', exception));
         })
       }).catch(() => {
         this.connectSubscribe(device, resolve, reject);
@@ -122,16 +128,58 @@ export class CommandPage {
     let connect = null;
     try {
       await this.connectPromise(device);
-      console.log("Device connected.");
+      console.log('Device connected.');
     }
     catch (exception) {
       connect = exception;
-      console.error(exception);
+      console.error(Message.formatException(exception));
     }
     return connect;
   }
 
-  initNativeHardware() {
+  writePromise(command: string) {
+    let message = new Message('BluetoothSerial');
+    message.command = command;
+    return new Promise((resolve, reject) => {
+      let subscribeRawData = this.bluetoothSerial.subscribeRawData().subscribe((responseData: ArrayBuffer) => {
+        message.read(responseData);
+        subscribeRawData.unsubscribe();
+        resolve(message);
+      }, exception => {
+        subscribeRawData.unsubscribe();
+        reject(message.init('subscribeRawData', exception));
+      });
+      if (!message.write(message.command)) {
+        reject(message.init('write', 'Bad command.'));
+      }
+      this.bluetoothSerial.write(message.requestData).then(requestRaw => {
+        message.requestRaw = requestRaw;
+      }).catch(exception => {
+        reject(message.init('write', exception));
+      });
+    });
+    //return message;
+  }
+
+  async write() {
+    let write = null;
+    try {
+      //await this.connectPromise(this.device);
+      let message = await this.writePromise(' ');
+      console.log(Message.formatCommand(message));
+      message = await this.writePromise('9');
+      console.log(Message.formatCommand(message));
+      message = await this.writePromise('01;0   ;0;0;0');
+      console.log(Message.formatCommand(message));
+    }
+    catch (exception) {
+      write = exception;
+      console.error(Message.formatException(exception));
+    }
+    return write;
+  }
+
+  /*initNativeHardware() {
     this.platform.ready().then(() => {
       this.bluetoothSerial.list().then((list: Array<any>) => {
         if (list && list.length > 0) {
@@ -153,9 +201,9 @@ export class CommandPage {
                   const OpenFiscalReceipt = this.IsHigh(2, 1);
                   //Array.Copy(data, 1, raw_data, 0, raw_data.Length);
                 })
-                this.bluetoothSendCommand(" ");
-                this.bluetoothSendCommand("9");
-                this.bluetoothSendCommand("01;0   ;0;0;0");
+                this.bluetoothSendCommand(' ');
+                this.bluetoothSendCommand('9');
+                this.bluetoothSendCommand('01;0   ;0;0;0');
               }
             })
           }, err => {
@@ -168,7 +216,7 @@ export class CommandPage {
         console.log(err);
       })
     })
-  }
+  }*/
 
   raw_data: Uint8Array;
   cmd_id: number = 0;
@@ -190,10 +238,10 @@ export class CommandPage {
     data[start + len + 1] = ((crc & 15) | '0'.charCodeAt(0));
   }
 
-  bluetoothSendCommand(command: string = "") {
+  bluetoothSendCommand(command: string = '') {
 
     let data_cmd: Array<number> = [];
-    // var url = " ";
+    // var url = ' ';
     // var data = [];
     for (let i = 0; i < command.length; i++) {
       data_cmd.push(command.charCodeAt(i));
