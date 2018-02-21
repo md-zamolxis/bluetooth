@@ -1,103 +1,74 @@
 import { Component } from '@angular/core';
-import { NavController, NavParams, Platform, ActionSheetController } from 'ionic-angular';
+import { NavController, NavParams, ActionSheetController, LoadingController } from 'ionic-angular';
 import { BluetoothSerial } from '@ionic-native/bluetooth-serial';
 import { Message } from '../../app/message';
 import { TremolElicomFPDriver } from '../../bluetooth.serial.driver/tremol.elicom.fp/tremol.elicom.fp.driver';
 import { Configuration } from '../../bluetooth.serial.driver/configuration';
+import { IDevice } from '../../bluetooth.serial.driver/device';
 
 @Component({
-  selector: 'page-command',
-  templateUrl: 'command.html'
+  selector: 'page-devices',
+  templateUrl: 'devices.html'
 })
-export class CommandPage {
-  selectedItem: any;
+export class DevicesPage {
+  selectedDevice: IDevice;
   icons: string[];
-  items: Array<{ code: number, title: string, note: string, icon: string }>;
+  devices: Array<IDevice>;
 
-  constructor(
-    public navController: NavController,
+  constructor(public navController: NavController,
     public navParams: NavParams,
     public bluetoothSerial: BluetoothSerial,
-    public actionSheetController: ActionSheetController) {
-    this.selectedItem = navParams.get('item');
-    this.items = [
-      { code: 0, title: 'Enable', note: 'Bluetooth Enable', icon: 'bluetooth' },
-      { code: 1, title: 'List', note: 'Bluetooth List', icon: 'bluetooth' },
-      { code: 2, title: 'Command', note: 'Bluetooth Command', icon: 'bluetooth' },
-      { code: 9, title: 'Example', note: 'Bluetooth Example', icon: 'bluetooth' }
-    ];
+    public actionSheetController: ActionSheetController,
+    public loadingCtrl: LoadingController) {
+    this.selectedDevice = navParams.get('device');
+    this.list();
   }
 
-  async itemTapped(event, item) {
-    this.navController.push(CommandPage, {
-      item: item
+  deviceTapped(event, device) {
+    this.navController.push(DevicesPage, {
+      device: device
     });
-    let driver = new TremolElicomFPDriver(this.bluetoothSerial);
-    switch (item.code) {
-      case 0: {
-        break;
-      }
-      case 1: {
-        await this.list();
-        break;
-      }
-      case 2: {
-        await this.write();
-        break;
-      }
-      case 9: {
-        //this.initNativeHardware();
+    switch (device.name) {
+      case "ZK00809320": {
+        let buttons = Array<any>();
+        buttons.push({
+          text: 'Verify',
+          handler: () => {
+            let driver = new TremolElicomFPDriver(this.bluetoothSerial);
+            let configuration = new Configuration(device);
+            configuration.logEvent = true;
+            configuration.logError = true;
+            let loading = this.loadingCtrl.create({
+              content: 'Please wait...'
+            });
+            loading.present();
+            driver.verify(configuration).then(() => {
+              loading.dismiss();
+            }).catch(() => {
+              loading.dismiss();
+            });
+          }
+        });
+        buttons.push({
+          text: 'Cancel',
+          role: 'cancel'
+        });
+        let actionSheet = this.actionSheetController.create({
+          title: 'Actions',
+          buttons: buttons
+        });
+        actionSheet.present();
         break;
       }
     }
   }
 
-  enablePromise() {
-    return new Promise((resolve, reject) => {
-      this.bluetoothSerial.isEnabled().then(() => {
-        resolve();
-      }).catch(() => {
-        this.bluetoothSerial.enable().then(() => {
-          resolve();
-        }).catch(exception => {
-          reject(Message.initException('BluetoothSerial', 'isEnabled', exception));
-        })
-      })
+  list() {
+    this.bluetoothSerial.list().then(devices => {
+      this.devices = devices;
+    }).catch(exception => {
+      console.error(exception);
     });
-  }
-
-  async enable() {
-    let enable = null;
-    try {
-      await this.enablePromise();
-    }
-    catch (exception) {
-      enable = exception;
-      console.error(Message.formatException(exception));
-    }
-    return enable;
-  }
-
-  async list() {
-    let list = await this.bluetoothSerial.list();
-    let buttons = Array<any>();
-    list.map(device => {
-      buttons.push({
-        text: device.name,
-        handler: () => {
-          this.connect(device);
-        }
-      })
-    });
-    buttons.push({
-      text: 'Cancel',
-      role: 'cancel'
-    });
-    let actionSheet = this.actionSheetController.create({
-      title: 'Devices',
-      buttons: buttons
-    });
-    actionSheet.present();
   }
 
   connectSubscribe(device: any, resolve, reject) {

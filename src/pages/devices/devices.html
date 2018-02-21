@@ -1,0 +1,20 @@
+<ion-header>
+  <ion-navbar>
+    <button ion-button menuToggle>
+      <ion-icon name="menu"></ion-icon>
+    </button>
+    <ion-title>Devices</ion-title>
+  </ion-navbar>
+</ion-header>
+
+<ion-content>
+  <ion-list>
+    <button ion-item *ngFor="let device of devices" (click)="deviceTapped($event, device)">
+      <ion-icon [name]="bluetooth" item-start></ion-icon>
+      {{device.name}}
+      <div class="item-note" item-end>
+        {{device.class}}
+      </div>
+    </button>
+  </ion-list>
+</ion-content>

@@ -43,7 +43,12 @@ export class TremolElicomFPDriver implements IDriver {
     private connect(configuration: Configuration, response: Response, resolve, reject) {
         let connect = this.bluetoothSerial.connect(configuration.device.address).subscribe(() => {
             connect.unsubscribe();
-            this.resolvePromise(configuration, response, resolve);
+            this.bluetoothSerial.disconnect().then(() => {
+                this.resolvePromise(configuration, response, resolve);
+            }).catch(exception => {
+                response.format(ResponseType.BluetoothDisconnectError, exception, response.driver);
+                this.rejectPromise(configuration, response, reject);
+            });
         }, exception => {
             connect.unsubscribe();
             response.format(ResponseType.BluetoothConnectError, exception, response.driver);

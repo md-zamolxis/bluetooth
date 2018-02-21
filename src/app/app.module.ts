@@ -4,7 +4,7 @@ import { IonicApp, IonicErrorHandler, IonicModule } from 'ionic-angular';
 
 import { Bluetooth } from './app.component';
 import { HomePage } from '../pages/home/home';
-import { CommandPage } from '../pages/command/command';
+import { DevicesPage } from '../pages/devices/devices';
 
 import { StatusBar } from '@ionic-native/status-bar';
 import { SplashScreen } from '@ionic-native/splash-screen';
@@ -14,7 +14,7 @@ import { BluetoothSerial } from '@ionic-native/bluetooth-serial';
   declarations: [
     Bluetooth,
     HomePage,
-    CommandPage
+    DevicesPage
   ],
   imports: [
     BrowserModule,
@@ -24,7 +24,7 @@ import { BluetoothSerial } from '@ionic-native/bluetooth-serial';
   entryComponents: [
     Bluetooth,
     HomePage,
-    CommandPage
+    DevicesPage
   ],
   providers: [
     StatusBar,

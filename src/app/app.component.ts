@@ -4,7 +4,7 @@ import { StatusBar } from '@ionic-native/status-bar';
 import { SplashScreen } from '@ionic-native/splash-screen';
 
 import { HomePage } from '../pages/home/home';
-import { CommandPage } from '../pages/command/command';
+import { DevicesPage } from '../pages/devices/devices';
 
 @Component({
   templateUrl: 'app.html'
@@ -22,7 +22,7 @@ export class Bluetooth {
     // used for an example of ngFor and navigation
     this.pages = [
       { title: 'Home', component: HomePage },
-      { title: 'Command', component: CommandPage }
+      { title: 'Devices', component: DevicesPage }
     ];
 
   }

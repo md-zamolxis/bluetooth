@@ -38,11 +38,11 @@ export class Response {
     }
 
     logStart() {
-        console.log(`Method ${this.method} has been started in ${this.driver} driver at ${this.startedOn}.`);
+        console.log(`Method [${this.method}] has been started in [${this.driver}] driver at [${this.startedOn}].`);
     }
 
     logEnd() {
-        console.log(`Method ${this.method} has been ended in ${this.driver} driver at ${this.endedOn}.`);
+        console.log(`Method [${this.method}] has been ended in [${this.driver}] driver at [${this.endedOn}].`);
     }
 
     logError() {
