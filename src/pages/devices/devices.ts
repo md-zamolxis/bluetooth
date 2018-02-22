@@ -7,6 +7,12 @@ import { Configuration } from '../../bluetooth.serial.driver/configuration';
 import { IDevice } from '../../bluetooth.serial.driver/device';
 import { Response } from '../../bluetooth.serial.driver/response';
 
+export enum DevicesPageMessageType {
+  BluetoothListError = 'Bluetooth list cannot load due [{0}] error.',
+  MethodSuccess = 'Method [{0}] has successfully been invoked for [{1}] driver in [{2}] milliseconds.',
+  MethodError = 'Error [{0}] has been raised in [{1}] milliseconds.'
+}
+
 @Component({
   selector: 'page-devices',
   templateUrl: 'devices.html'
@@ -29,7 +35,7 @@ export class DevicesPage {
     this.list();
   }
 
-  show() {
+  load() {
     this.toast = this.toastCtrl.create({
       position: 'bottom',
       duration: 3000
@@ -38,6 +44,23 @@ export class DevicesPage {
       content: 'Please wait...'
     });
     this.loading.present();
+  }
+
+  show(message?: string) {
+    this.loading.dismiss();
+    if (message == undefined) {
+      return;
+    }
+    this.toast.setMessage(message);
+    this.toast.present();
+  }
+
+  success(response: Response) {
+    this.show(Response.format(DevicesPageMessageType.MethodSuccess, response.method, response.driver, response.duration()));
+  }
+
+  error(response: Response) {
+    this.show(Response.format(DevicesPageMessageType.MethodError, response.message, response.duration()));
   }
 
   deviceTapped(event, device) {
@@ -54,15 +77,22 @@ export class DevicesPage {
         buttons.push({
           text: 'Verify',
           handler: () => {
-            this.show();
+            this.load();
             driver.verify(configuration).then((response: Response) => {
-              this.loading.dismiss();
-              this.toast.setMessage(`Method [${response.method}] has successfully invoked for [${response.driver}] driver in [${response.time()}] milliseconds.`);
-              this.toast.present();
+              this.success(response);
             }).catch((response: Response) => {
-              this.loading.dismiss();
-              this.toast.setMessage(`[${response.message}] in [${response.time()}] milliseconds.`);
-              this.toast.present();
+              this.error(response);
+            });
+          }
+        });
+        buttons.push({
+          text: 'Print',
+          handler: () => {
+            this.load();
+            driver.print(configuration, null, null, null).then((response: Response) => {
+              this.success(response);
+            }).catch((response: Response) => {
+              this.error(response);
             });
           }
         });
@@ -81,14 +111,12 @@ export class DevicesPage {
   }
 
   list() {
-    this.show();
+    this.load();
     this.bluetoothSerial.list().then(devices => {
       this.devices = devices;
-      this.loading.dismiss();
+      this.show();
     }).catch((exception: string) => {
-      this.loading.dismiss();
-      this.toast.setMessage(`Bluetooth list cannot load due [${exception}] error.`);
-      this.toast.present();
+      this.show(Response.format(DevicesPageMessageType.BluetoothListError, exception));
     });
   }
 

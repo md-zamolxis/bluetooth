@@ -30,7 +30,7 @@ export class HomePage {
     this.check();
   }
 
-  show() {
+  load() {
     this.toast = this.toastCtrl.create({
       position: 'bottom',
       duration: 3000
@@ -41,58 +41,53 @@ export class HomePage {
     this.loading.present();
   }
 
+  show(message?: string) {
+    this.loading.dismiss();
+    if (message == undefined) {
+      return;
+    }
+    this.toast.setMessage(message);
+    this.toast.present();
+  }
+
   check() {
-    this.show();
+    this.load();
     this.platform.ready().then(() => {
       this.ready = true;
       this.bluetoothSerial.isEnabled().then(() => {
         this.enabled = true;
-        this.loading.dismiss();
-        this.toast.setMessage(HomePageMessageType.BluetoothEnabled);
-        this.toast.present();
+        this.show(HomePageMessageType.BluetoothEnabled);
       }).catch((exception: string) => {
         this.enabled = false;
-        this.loading.dismiss();
-        this.toast.setMessage(HomePageMessageType.BluetoothDisabled);
-        this.toast.present();
+        this.show(HomePageMessageType.BluetoothDisabled);
       });
     }).catch((exception: string) => {
       this.ready = false;
       this.enabled = false;
-      this.loading.dismiss();
-      this.toast.setMessage(Response.format(HomePageMessageType.PlatformNotReady, exception));
-      this.toast.present();
+      this.show(Response.format(HomePageMessageType.PlatformNotReady, exception));
     });
   }
 
   change() {
-    this.show();
+    this.load();
     this.platform.ready().then(() => {
       this.ready = true;
       this.bluetoothSerial.isEnabled().then(() => {
         this.enabled = true;
-        this.loading.dismiss();
-        this.toast.setMessage(HomePageMessageType.BluetoothEnabled);
-        this.toast.present();
+        this.show(HomePageMessageType.BluetoothEnabled);
       }).catch((exception: string) => {
         this.bluetoothSerial.enable().then(() => {
           this.enabled = true;
-          this.loading.dismiss();
-          this.toast.setMessage(HomePageMessageType.BluetoothEnabled);
-          this.toast.present();
+          this.show(HomePageMessageType.BluetoothEnabled);
         }).catch((exception: string) => {
           this.enabled = false;
-          this.loading.dismiss();
-          this.toast.setMessage(Response.format(HomePageMessageType.BluetoothCannotEnable, exception));
-          this.toast.present();
+          this.show(Response.format(HomePageMessageType.BluetoothCannotEnable, exception));
         });
       });
     }).catch((exception: string) => {
       this.ready = false;
       this.enabled = false;
-      this.loading.dismiss();
-      this.toast.setMessage(Response.format(HomePageMessageType.PlatformNotReady, exception));
-      this.toast.present();
+      this.show(Response.format(HomePageMessageType.PlatformNotReady, exception));
     });
   }
 
