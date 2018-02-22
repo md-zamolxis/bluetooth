@@ -20,21 +20,26 @@ export class Response {
         this.startedOn = new Date();
     }
 
-    format(responseType?: ResponseType, ...parameters) {
+    handle(responseType?: ResponseType, ...parameters) {
         if (responseType != undefined) {
             this.responseType = responseType;
             this.parameters = parameters;
-            this.message = null;
-            if (responseType !== null) {
-                this.message = responseType;
-                if (parameters != null) {
-                    this.message = this.message.replace(/{(\d+)}/g, function (match, index) {
-                        return parameters[index] === undefined ? match : parameters[index];
-                    });
-                }
-            }
+            this.message = Response.format(responseType, parameters);
         }
         this.endedOn = new Date();
+    }
+
+    static format(pattern: string, ...parameters): string {
+        let format = null;
+        if (pattern !== null) {
+            format = pattern;
+            if (parameters != null) {
+                format = format.replace(/{(\d+)}/g, function (match, index) {
+                    return parameters[index] === undefined ? match : parameters[index];
+                });
+            }
+        }
+        return format;
     }
 
     logStart() {
@@ -46,9 +51,14 @@ export class Response {
     }
 
     logError() {
-        if (this.message != null) {
-            console.error(this.message);
+        if (this.message == null) {
+            return;
         }
+        console.error(this.message);
+    }
+
+    time(): number {
+        return this.endedOn.getTime() - this.startedOn.getTime();
     }
 
 }

@@ -13,11 +13,11 @@ export class TremolElicomFPDriver implements IDriver {
 
     private invoke(configuration: Configuration, response: Response) {
         if (configuration == null) {
-            response.format(ResponseType.ConfigurationNotDefined, response.driver);
+            response.handle(ResponseType.ConfigurationNotDefined, response.driver);
             throw response;
         }
         else if (configuration.device == null) {
-            response.format(ResponseType.ConfigurationDeviceNotDefined, response.driver);
+            response.handle(ResponseType.ConfigurationDeviceNotDefined, response.driver);
             throw response;
         }
         else if (configuration.logEvent) {
@@ -26,7 +26,7 @@ export class TremolElicomFPDriver implements IDriver {
     }
 
     private resolvePromise(configuration: Configuration, response: Response, resolve) {
-        response.format();
+        response.handle();
         if (configuration.logEvent) {
             response.logEnd();
         }
@@ -40,18 +40,22 @@ export class TremolElicomFPDriver implements IDriver {
         reject(response);
     }
 
+    private disconnect(configuration: Configuration, response: Response, exception: string, reject) {
+        response.handle(ResponseType.BluetoothDisconnectError, exception, response.driver);
+        this.rejectPromise(configuration, response, reject);
+}
+
     private connect(configuration: Configuration, response: Response, resolve, reject) {
         let connect = this.bluetoothSerial.connect(configuration.device.address).subscribe(() => {
             connect.unsubscribe();
             this.bluetoothSerial.disconnect().then(() => {
                 this.resolvePromise(configuration, response, resolve);
-            }).catch(exception => {
-                response.format(ResponseType.BluetoothDisconnectError, exception, response.driver);
-                this.rejectPromise(configuration, response, reject);
+            }).catch((exception: string) => {
+                this.disconnect(configuration, response, exception, reject);
             });
-        }, exception => {
+        }, (exception: string) => {
             connect.unsubscribe();
-            response.format(ResponseType.BluetoothConnectError, exception, response.driver);
+            response.handle(ResponseType.BluetoothConnectError, exception, response.driver);
             this.rejectPromise(configuration, response, reject);
         });
     }
@@ -68,15 +72,14 @@ export class TremolElicomFPDriver implements IDriver {
                 this.bluetoothSerial.isConnected().then(() => {
                     this.bluetoothSerial.disconnect().then(() => {
                         this.connect(configuration, response, resolve, reject);
-                    }).catch(exception => {
-                        response.format(ResponseType.BluetoothDisconnectError, exception, response.driver);
-                        this.rejectPromise(configuration, response, reject);
+                    }).catch((exception: string) => {
+                        this.disconnect(configuration, response, exception, reject);
                     });
                 }).catch(() => {
                     this.connect(configuration, response, resolve, reject);
                 });
             }).catch(() => {
-                response.format(ResponseType.BluetoothNotEnabled);
+                response.handle(ResponseType.BluetoothNotEnabled);
                 this.rejectPromise(configuration, response, reject);
             });
         });
@@ -84,19 +87,19 @@ export class TremolElicomFPDriver implements IDriver {
 
     print(configuration: Configuration, receipt: IReceipt, vats: Array<IVat | any>, tenders: Array<ITender>) {
         let response = new Response(this.name(), 'print');
-        response.format(ResponseType.MethodNotImplemented, response.method, response.driver);
+        response.handle(ResponseType.MethodNotImplemented, response.method, response.driver);
         throw response;
     }
 
     printX(configuration: Configuration) {
         let response = new Response(this.name(), 'printX');
-        response.format(ResponseType.MethodNotImplemented, response.method, response.driver);
+        response.handle(ResponseType.MethodNotImplemented, response.method, response.driver);
         throw response;
     }
 
     printZ(configuration: Configuration) {
         let response = new Response(this.name(), 'printZ');
-        response.format(ResponseType.MethodNotImplemented, response.method, response.driver);
+        response.handle(ResponseType.MethodNotImplemented, response.method, response.driver);
         throw response;
     }
 

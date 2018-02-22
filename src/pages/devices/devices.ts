@@ -1,16 +1,20 @@
 import { Component } from '@angular/core';
-import { NavController, NavParams, ActionSheetController, LoadingController } from 'ionic-angular';
+import { NavController, NavParams, ActionSheetController, Toast, ToastController, Loading, LoadingController } from 'ionic-angular';
 import { BluetoothSerial } from '@ionic-native/bluetooth-serial';
 import { Message } from '../../app/message';
 import { TremolElicomFPDriver } from '../../bluetooth.serial.driver/tremol.elicom.fp/tremol.elicom.fp.driver';
 import { Configuration } from '../../bluetooth.serial.driver/configuration';
 import { IDevice } from '../../bluetooth.serial.driver/device';
+import { Response } from '../../bluetooth.serial.driver/response';
 
 @Component({
   selector: 'page-devices',
   templateUrl: 'devices.html'
 })
 export class DevicesPage {
+
+  toast: Toast;
+  loading: Loading;
   selectedDevice: IDevice;
   icons: string[];
   devices: Array<IDevice>;
@@ -19,33 +23,46 @@ export class DevicesPage {
     public navParams: NavParams,
     public bluetoothSerial: BluetoothSerial,
     public actionSheetController: ActionSheetController,
-    public loadingCtrl: LoadingController) {
+    public toastCtrl: ToastController,
+    public loadingController: LoadingController) {
     this.selectedDevice = navParams.get('device');
     this.list();
   }
 
+  show() {
+    this.toast = this.toastCtrl.create({
+      position: 'bottom',
+      duration: 3000
+    });
+    this.loading = this.loadingController.create({
+      content: 'Please wait...'
+    });
+    this.loading.present();
+  }
+
   deviceTapped(event, device) {
-    this.navController.push(DevicesPage, {
+    this.navController.setRoot(DevicesPage, {
       device: device
     });
     switch (device.name) {
       case "ZK00809320": {
+        let driver = new TremolElicomFPDriver(this.bluetoothSerial);
+        let configuration = new Configuration(device);
+        configuration.logEvent = true;
+        configuration.logError = true;
         let buttons = Array<any>();
         buttons.push({
           text: 'Verify',
           handler: () => {
-            let driver = new TremolElicomFPDriver(this.bluetoothSerial);
-            let configuration = new Configuration(device);
-            configuration.logEvent = true;
-            configuration.logError = true;
-            let loading = this.loadingCtrl.create({
-              content: 'Please wait...'
-            });
-            loading.present();
-            driver.verify(configuration).then(() => {
-              loading.dismiss();
-            }).catch(() => {
-              loading.dismiss();
+            this.show();
+            driver.verify(configuration).then((response: Response) => {
+              this.loading.dismiss();
+              this.toast.setMessage(`Method [${response.method}] has successfully invoked for [${response.driver}] driver in [${response.time()}] milliseconds.`);
+              this.toast.present();
+            }).catch((response: Response) => {
+              this.loading.dismiss();
+              this.toast.setMessage(`[${response.message}] in [${response.time()}] milliseconds.`);
+              this.toast.present();
             });
           }
         });
@@ -64,48 +81,15 @@ export class DevicesPage {
   }
 
   list() {
+    this.show();
     this.bluetoothSerial.list().then(devices => {
       this.devices = devices;
-    }).catch(exception => {
-      console.error(exception);
+      this.loading.dismiss();
+    }).catch((exception: string) => {
+      this.loading.dismiss();
+      this.toast.setMessage(`Bluetooth list cannot load due [${exception}] error.`);
+      this.toast.present();
     });
-  }
-
-  connectSubscribe(device: any, resolve, reject) {
-    let connectSubscribe = this.bluetoothSerial.connect(device.address).subscribe(() => {
-      connectSubscribe.unsubscribe();
-      resolve();
-    }, exception => {
-      connectSubscribe.unsubscribe();
-      reject(Message.initException('BluetoothSerial', 'connect', exception));
-    });
-  }
-
-  connectPromise(device: any) {
-    return new Promise((resolve, reject) => {
-      this.bluetoothSerial.isConnected().then(() => {
-        this.bluetoothSerial.disconnect().then(() => {
-          this.connectSubscribe(device, resolve, reject);
-        }).catch(exception => {
-          reject(Message.initException('BluetoothSerial', 'disconnect', exception));
-        })
-      }).catch(() => {
-        this.connectSubscribe(device, resolve, reject);
-      })
-    });
-  }
-
-  async connect(device: any) {
-    let connect = null;
-    try {
-      await this.connectPromise(device);
-      console.log('Device connected.');
-    }
-    catch (exception) {
-      connect = exception;
-      console.error(Message.formatException(exception));
-    }
-    return connect;
   }
 
   writePromise(command: string) {

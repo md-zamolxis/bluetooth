@@ -10,7 +10,7 @@
 <ion-content padding>
   <ion-item>
     <ion-label>Enable</ion-label>
-    <ion-toggle [(ngModel)]="enabled" (ionChange)="change()"></ion-toggle>
+    <ion-toggle [(ngModel)]="enabled" [disabled]="enabled" (ionChange)="change()"></ion-toggle>
   </ion-item>
   <button ion-button secondary menuToggle>Menu</button>
 </ion-content>
