@@ -7,7 +7,9 @@ export enum TenderType {
 }
 
 export interface ITender {
+
     code: string;
     type: TenderType;
     name: string;
+    
 }

@@ -1,8 +1,11 @@
+import { ICommand } from "./command";
+
 export enum ResponseType {
-    ConfigurationNotDefined = 'Configuration not defined in [{0}] driver.',
-    ConfigurationDeviceNotDefined = 'Configuration device not defined in [{0}] driver.',
     MethodNotImplemented = 'Method [{0}] is not implemented yet for [{1}] driver.',
     MethodNotSupported = 'Method [{0}] is not supported by [{1}] driver.',
+    ConfigurationNotDefined = 'Configuration not defined in [{0}] driver.',
+    ConfigurationDeviceNotDefined = 'Configuration device not defined in [{0}] driver.',
+    CommandInvalid = 'Command [{0}] at [{1}] index has invalid format for [{2}] driver.',
     BluetoothNotEnabled = 'Bluetooth not enabled.',
     BluetoothConnectError = 'Bluetooth error [{0}] has occurred on connecting to [{1}] driver within [{2}] milliseconds.',
     BluetoothDisconnectError = 'Bluetooth error [{0}] has occurred on disconnecting to [{1}] driver within [{2}] milliseconds.',
@@ -17,6 +20,9 @@ export class Response {
     endedOn: Date;
     responseType: ResponseType;
     parameters?: any;
+    commandSubscribeRawDataErrorIndex?: number;
+    commandWriteErrorIndex?: number;
+
 
     static replace(pattern, parameters) {
         return pattern.replace(/{(\d+)}/g, function (match, index) {
@@ -35,7 +41,7 @@ export class Response {
         return format;
     }
 
-    constructor(public driver: string, public method: string) {
+    constructor(public driver: string, public method: string, public commands?: Array<ICommand>) {
         this.startedOn = new Date();
     }
 

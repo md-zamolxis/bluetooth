@@ -97,6 +97,29 @@ export class DevicesPage {
           }
         });
         buttons.push({
+          text: 'PrintX',
+          handler: () => {
+            this.initNativeHardware();
+            /*this.load();
+            driver.printX(configuration).then((response: Response) => {
+              this.success(response);
+            }).catch((response: Response) => {
+              this.error(response);
+            });*/
+          }
+        });
+        buttons.push({
+          text: 'PrintZ',
+          handler: () => {
+            this.load();
+            driver.printZ(configuration).then((response: Response) => {
+              this.success(response);
+            }).catch((response: Response) => {
+              this.error(response);
+            });
+          }
+        });
+        buttons.push({
           text: 'Cancel',
           role: 'cancel'
         });
@@ -162,8 +185,7 @@ export class DevicesPage {
     return write;
   }
 
-  /*initNativeHardware() {
-    this.platform.ready().then(() => {
+  initNativeHardware() {
       this.bluetoothSerial.list().then((list: Array<any>) => {
         if (list && list.length > 0) {
           this.bluetoothSerial.connect(list.find(x => x.name == 'ZK00809320').address).subscribe(res => {
@@ -184,9 +206,10 @@ export class DevicesPage {
                   const OpenFiscalReceipt = this.IsHigh(2, 1);
                   //Array.Copy(data, 1, raw_data, 0, raw_data.Length);
                 })
-                this.bluetoothSendCommand(' ');
-                this.bluetoothSendCommand('9');
-                this.bluetoothSendCommand('01;0   ;0;0;0');
+                this.bluetoothSendCommand('|X');
+                //this.bluetoothSendCommand(' ');
+                //this.bluetoothSendCommand('9');
+                //this.bluetoothSendCommand('01;0   ;0;0;0');
               }
             })
           }, err => {
@@ -198,8 +221,7 @@ export class DevicesPage {
       }).catch(err => {
         console.log(err);
       })
-    })
-  }*/
+  }
 
   raw_data: Uint8Array;
   cmd_id: number = 0;
