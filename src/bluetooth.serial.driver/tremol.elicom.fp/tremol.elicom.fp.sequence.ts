@@ -110,13 +110,16 @@ export class TremolElicomFPSequence implements ISequence {
         }
     }
 
-    private output(command: TremolElicomFPCommand, reply: ArrayBuffer) {
-        command.reply = reply;
-        if (reply == null || reply.byteLength < 6) {
+    private output(command: TremolElicomFPCommand, response: string = '') {
+        command.response = new ArrayBuffer(response.length * 2);
+        command.responseData = new Uint8Array(command.response);
+        for (let index = 0; index < response.length; index++) {
+            command.responseData[index] = response.charCodeAt(index);
+        }
+        if (command.responseData == null || command.responseData.byteLength < 6) {
             return;
         }
-        command.replyData = new Uint8Array((reply as ArrayBuffer).slice(1, reply.byteLength));
-        command.replyRaw = String.fromCharCode.apply(null, command.replyData);
+        command.responseRaw = String.fromCharCode.apply(null, command.responseData);
     }
 
     private isEnabled(): Promise<boolean> {
@@ -145,14 +148,15 @@ export class TremolElicomFPSequence implements ISequence {
             if (isConnected) {
                 this.bluetoothSerial.disconnect().then(() => {
                 }).catch((exception: string) => {
+                    this.interval.end();
                     this.error = new Message(MessageType.BluetoothDisconnectError, this.driver.name(), exception, this.interval.duration());
                     reject();
                 });
             }
             let connect = this.bluetoothSerial.connect(this.configuration.device.address).subscribe(() => {
-                connect.unsubscribe();
                 resolve(true);
             }, (exception: string) => {
+                this.interval.end();
                 this.error = new Message(MessageType.BluetoothConnectError, this.driver.name(), exception, this.interval.duration());
                 connect.unsubscribe();
                 reject();
@@ -163,20 +167,21 @@ export class TremolElicomFPSequence implements ISequence {
     private write(command: TremolElicomFPCommand): Promise<boolean> {
         return new Promise((resolve, reject) => {
             command.interval = new Interval();
-            let subscribeRawData = this.bluetoothSerial.subscribeRawData().subscribe((reply: ArrayBuffer) => {
-                subscribeRawData.unsubscribe();
-                this.output(command, reply);
-                command.interval.endedOn = null;
-                this.logMessage(this.configuration.logCommandResponse, Message.format(MessageType.CommandResponse, this.driver.name(), command.request, command.replyRaw, command.interval.endedOn, command.interval.duration()));
-                resolve(true);
-            }, (exception: string) => {
-                this.error = new Message(MessageType.CommandError, this.driver.name(), command.request, exception, command.interval.endedOn, command.interval.duration());
-                subscribeRawData.unsubscribe();
-                reject();
-            });
-            this.bluetoothSerial.write(command.requestData).then((requestData: any) => {
-                this.logMessage(this.configuration.logCommandSuccess, Message.format(MessageType.CommandSuccess, this.driver.name(), command.request, command.interval.endedOn, command.interval.duration()));
+            this.bluetoothSerial.write(command.requestData).then((request: string) => {
+                command.interval.end();
+                this.logMessage(this.configuration.logCommandRequest, Message.format(MessageType.CommandRequest, this.driver.name(), command.request, command.interval.endedOn, command.interval.duration()));
+                this.bluetoothSerial.read().then((response: string) => {
+                    this.output(command, response);
+                    command.interval.end();
+                    this.logMessage(this.configuration.logCommandResponse, Message.format(MessageType.CommandResponse, this.driver.name(), command.request, command.responseRaw, command.interval.endedOn, command.interval.duration()));
+                    resolve(true);
+                }).catch((exception: string) => {
+                    command.interval.end();
+                    this.error = new Message(MessageType.CommandError, this.driver.name(), command.request, exception, command.interval.endedOn, command.interval.duration());
+                    reject();
+                });
             }).catch((exception: string) => {
+                command.interval.end();
                 this.error = new Message(MessageType.CommandError, this.driver.name(), command.request, exception, command.interval.endedOn, command.interval.duration());
                 reject();
             });
@@ -206,6 +211,7 @@ export class TremolElicomFPSequence implements ISequence {
                         await this.write(this.commands[index]);
                     }
                 }
+                this.interval.end();
                 this.logMessage(this.configuration.logMessage, Message.format(MessageType.MethodEndMessage, this.driver.name(), this.method, this.interval.endedOn, this.interval.duration()));
             }
         }

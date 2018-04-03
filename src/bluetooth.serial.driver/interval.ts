@@ -7,13 +7,11 @@ export class Interval {
         this.startedOn = new Date();
     }
 
+    public end() {
+        this.endedOn = new Date();
+    }
+
     public duration(): number {
-        if (this.endedOn == null) {
-            this.endedOn = new Date();
-        }
-        if (this.startedOn == null) {
-            this.startedOn = this.endedOn;
-        }
         return this.endedOn.getTime() - this.startedOn.getTime();
     }
 
