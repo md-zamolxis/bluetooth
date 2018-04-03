@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { NavController, Platform, Toast, ToastController, Loading, LoadingController } from 'ionic-angular';
 import { BluetoothSerial } from '@ionic-native/bluetooth-serial';
-import { Response } from '../../bluetooth.serial.driver/response';
+import { Message } from '../../bluetooth.serial.driver/message';
 
 export enum HomePageMessageType {
   PlatformNotReady = 'Platfor not ready due [${0}] error.',
@@ -16,10 +16,10 @@ export enum HomePageMessageType {
 })
 export class HomePage {
 
-  toast: Toast;
-  loading: Loading;
-  ready: boolean;
-  enabled: boolean;
+  private toast: Toast;
+  private loading: Loading;
+  private ready: boolean;
+  private enabled: boolean;
 
   constructor(
     public navCtrl: NavController,
@@ -30,7 +30,7 @@ export class HomePage {
     this.check();
   }
 
-  load() {
+  private load() {
     this.toast = this.toastCtrl.create({
       position: 'bottom',
       duration: 3000
@@ -41,7 +41,7 @@ export class HomePage {
     this.loading.present();
   }
 
-  show(message?: string) {
+  private show(message?: string) {
     this.loading.dismiss();
     if (message == undefined) {
       return;
@@ -50,7 +50,7 @@ export class HomePage {
     this.toast.present();
   }
 
-  check() {
+  private check() {
     this.load();
     this.platform.ready().then(() => {
       this.ready = true;
@@ -64,11 +64,11 @@ export class HomePage {
     }).catch((exception: string) => {
       this.ready = false;
       this.enabled = false;
-      this.show(Response.format(HomePageMessageType.PlatformNotReady, exception));
+      this.show(Message.format(HomePageMessageType.PlatformNotReady, exception));
     });
   }
 
-  change() {
+  public change() {
     this.load();
     this.platform.ready().then(() => {
       this.ready = true;
@@ -81,13 +81,13 @@ export class HomePage {
           this.show(HomePageMessageType.BluetoothEnabled);
         }).catch((exception: string) => {
           this.enabled = false;
-          this.show(Response.format(HomePageMessageType.BluetoothCannotEnable, exception));
+          this.show(Message.format(HomePageMessageType.BluetoothCannotEnable, exception));
         });
       });
     }).catch((exception: string) => {
       this.ready = false;
       this.enabled = false;
-      this.show(Response.format(HomePageMessageType.PlatformNotReady, exception));
+      this.show(Message.format(HomePageMessageType.PlatformNotReady, exception));
     });
   }
 

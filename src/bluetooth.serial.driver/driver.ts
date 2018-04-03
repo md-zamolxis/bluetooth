@@ -2,17 +2,18 @@ import { Configuration } from "./configuration";
 import { IReceipt } from "./model/receipt";
 import { IVat } from "./model/vat";
 import { ITender } from "./model/tender";
+import { ISequence } from "./sequence";
 
 export interface IDriver {
 
     name(): string;
 
-    verify(configuration: Configuration);
+    verify(configuration: Configuration): Promise<ISequence>;
 
-    print(configuration: Configuration, receipt: IReceipt, vats: Array<IVat>, tenders: Array<ITender>);
+    print(configuration: Configuration, receipt: IReceipt, vats: Array<IVat>, tenders: Array<ITender>): Promise<ISequence>;
 
-    printX(configuration: Configuration);
+    printX(configuration: Configuration): Promise<ISequence>;
 
-    printZ(configuration: Configuration);
+    printZ(configuration: Configuration): Promise<ISequence>;
 
 }

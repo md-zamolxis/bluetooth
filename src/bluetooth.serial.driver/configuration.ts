@@ -2,8 +2,10 @@ import { IDevice } from "./device";
 
 export class Configuration {
     
-    logEvent: boolean;
-    logError: boolean;
+    public logMessage: boolean;
+    public logError: boolean;
+    public logCommandResponse: boolean;
+    public logCommandSuccess: boolean;
 
     constructor(public device: IDevice) {
     }
