@@ -6,6 +6,7 @@ export class Configuration {
     public logError: boolean;
     public logCommandRequest: boolean;
     public logCommandResponse: boolean;
+    public timeout: number;
 
     constructor(public device: IDevice) {
     }

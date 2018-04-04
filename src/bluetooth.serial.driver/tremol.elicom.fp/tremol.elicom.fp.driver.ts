@@ -23,17 +23,17 @@ export class TremolElicomFPDriver implements IDriver {
     }
 
     public print(configuration: Configuration, receipt: IReceipt, vats: Array<IVat>, tenders: Array<ITender>): Promise<ISequence> {
-        let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'print');
+        /*let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'print');
         sequence.error = new Message(MessageType.MethodNotImplementedError, sequence.driver.name(), sequence.method);
         return new Promise<ISequence>((resolve, reject) => {
             reject(sequence);
-        });
-       /*let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'print', [
+        });*/
+       let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'print', [
            { request: ' ' },
            { request: '9' },
            { request: '01;0   ;0;0;0' },
         ]);
-       return sequence.handle();*/
+       return sequence.handle();
    }
 
     public printX(configuration: Configuration): Promise<ISequence> {

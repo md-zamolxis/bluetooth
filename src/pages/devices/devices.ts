@@ -21,8 +21,9 @@ export class DevicesPage {
 
   private toast: Toast;
   private loading: Loading;
-  private selectedDevice: IDevice;
-  private devices: Array<IDevice>;
+
+  public selectedDevice: IDevice;
+  public devices: Array<IDevice>;
 
   constructor(public navController: NavController,
     public navParams: NavParams,
@@ -83,6 +84,7 @@ export class DevicesPage {
         let driver = new TremolElicomFPDriver(this.bluetoothSerial);
         let configuration = new Configuration(device);
         configuration.logMessage = configuration.logError = configuration.logCommandRequest = configuration.logCommandResponse = true;
+        configuration.timeout = 1000;
         let buttons = Array<any>();
         buttons.push({
           text: 'Verify',
