@@ -8,7 +8,7 @@ export interface IDriver {
 
     name(): string;
 
-    verify(configuration: Configuration): Promise<ISequence>;
+    status(configuration: Configuration): Promise<ISequence>;
 
     print(configuration: Configuration, receipt: IReceipt, vats: Array<IVat>, tenders: Array<ITender>): Promise<ISequence>;
 

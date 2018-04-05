@@ -87,10 +87,10 @@ export class DevicesPage {
         configuration.timeout = 1000;
         let buttons = Array<any>();
         buttons.push({
-          text: 'Verify',
+          text: 'Status',
           handler: () => {
             this.load();
-            driver.verify(configuration).then((sequence: ISequence) => {
+            driver.status(configuration).then((sequence: ISequence) => {
               this.success(sequence);
             }).catch((sequence: ISequence) => {
               this.error(sequence);

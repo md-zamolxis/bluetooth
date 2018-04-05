@@ -18,8 +18,9 @@ export class HomePage {
 
   private toast: Toast;
   private loading: Loading;
-  private ready: boolean;
-  private enabled: boolean;
+
+  public ready: boolean;
+  public enabled: boolean;
 
   constructor(
     public navCtrl: NavController,

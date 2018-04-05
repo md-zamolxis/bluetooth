@@ -17,8 +17,8 @@ export class TremolElicomFPDriver implements IDriver {
         return 'Tremol Elicom FP v1.0';
     }
 
-    public verify(configuration: Configuration): Promise<ISequence> {
-        let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'verify');
+    public status(configuration: Configuration): Promise<ISequence> {
+        let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'status', [{ request: ' ' }]);
         return sequence.handle();
     }
 

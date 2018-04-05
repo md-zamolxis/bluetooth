@@ -4,22 +4,23 @@ import { Message } from "../message";
 
 export class TremolElicomFPCommand implements ICommand {
 
+    public index: number;
+    public interval: Interval;
+    public isValid: boolean;
     public request: string;
     public requestData: Array<number>;
-    public response: string;
+    public responseRaw: ArrayBuffer;
     public responseData: Uint8Array;
+    public response: string;
     public status: string;
     public number: number;
-    public isValid: boolean;
-    public interval: Interval;
-    public error: Message;
 
     constructor(request: string = '') {
         this.request = request;
     }
 
-    public isHigh(responseRaw: Uint8Array, byteIndex: number, bitIndex: number): boolean {
-        return (responseRaw && (responseRaw[byteIndex] & (1 << bitIndex)) != 0);
+    public isHigh(responseData: Uint8Array, byteIndex: number, bitIndex: number): boolean {
+        return (responseData && (responseData[byteIndex] & (1 << bitIndex)) != 0);
     }
 
     public readOnlyFiscalMemory(): boolean {
