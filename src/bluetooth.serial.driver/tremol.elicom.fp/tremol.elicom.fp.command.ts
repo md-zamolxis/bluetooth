@@ -1,6 +1,5 @@
 import { ICommand } from "../command";
 import { Interval } from "../interval";
-import { Message } from "../message";
 
 export class TremolElicomFPCommand implements ICommand {
 
@@ -13,7 +12,6 @@ export class TremolElicomFPCommand implements ICommand {
     public responseData: Uint8Array;
     public response: string;
     public status: string;
-    public number: number;
 
     constructor(request: string = '') {
         this.request = request;

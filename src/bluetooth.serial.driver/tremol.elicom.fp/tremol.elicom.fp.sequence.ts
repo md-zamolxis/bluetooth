@@ -13,31 +13,30 @@ export class TremolElicomFPSequence implements ISequence {
     private nextCommandId: number = 0;
     private STX: number = 2;
     private ETX: number = 10;
+    private timeout: number = 1000;
+    private subscribeRawData: any;
+    private connect: any;
 
     public configuration: Configuration
     public driver: IDriver;
     public method: string;
     public interval: Interval;
-    public error: Message;
     public commands: Array<TremolElicomFPCommand> = new Array<TremolElicomFPCommand>();
+    public command: TremolElicomFPCommand;
+    public error: Message;
 
     constructor(private bluetoothSerial: BluetoothSerial, configuration: Configuration, driver: IDriver, method: string, commands?: Array<ICommand>) {
         this.configuration = configuration;
         this.driver = driver;
         this.method = method;
+        if (this.configuration != null && this.configuration.timeout != null) {
+            this.timeout = this.configuration.timeout;
+        }
         this.interval = new Interval();
         if (commands != null) {
             for (let index = 0; index < commands.length; index++) {
-                let command = new TremolElicomFPCommand(commands[index].request);
-                command.index = index;
-                this.commands.push(command);
+                this.commands.push(new TremolElicomFPCommand(commands[index].request));
             }
-        }
-    }
-
-    private logMessage(isEnabled: boolean, message: string) {
-        if (isEnabled) {
-            console.log(message);
         }
     }
 
@@ -50,17 +49,12 @@ export class TremolElicomFPSequence implements ISequence {
         commandData[start + length + 1] = ((crc & 15) | '0'.charCodeAt(0));
     }
 
-    private valid(command: TremolElicomFPCommand): Array<number> {
+    private input(command: TremolElicomFPCommand) {
         let commandData: Array<number> = [];
         for (let index = 0; index < command.request.length; index++) {
             commandData.push(command.request.charCodeAt(index));
         }
         command.isValid = !(commandData.length > 248 && commandData[0] != 0x4D);
-        return commandData;
-    }
-
-    private input(command: TremolElicomFPCommand) {
-        let commandData: Array<number> = this.valid(command);
         let commandLength = commandData.length + 2;
         command.requestData = new Array(commandData.length + 6);
         for (let index = 0; index < command.requestData.length; index++) {
@@ -87,107 +81,206 @@ export class TremolElicomFPSequence implements ISequence {
         }
     }
 
-    private reject(command: TremolElicomFPCommand, reject, messageType?: MessageType, ...parameters) {
-        command.status = "Error";
+    private start() {
+        this.connect = this.bluetoothSerial.connect(this.configuration.device.address).subscribe(() => {
+            this.interval.end();
+            this.handleMessage(
+                this.configuration.logMessage,
+                Message.format(
+                    MessageType.BluetoothConnectSuccess,
+                    this.driver.name(),
+                    this.interval.startedOn
+                )
+            );
+            this.send(0);
+        }, (exception: string) => {
+            this.interval.end();
+            this.handleError(
+                MessageType.BluetoothConnectError,
+                this.driver.name(),
+                exception,
+                this.interval.duration()
+            );
+        });
+    }
+
+    private send(index: number) {
+        if (this.error != null) {
+            index == this.commands.length;
+        }
+        if (index < this.commands.length) {
+            this.command = this.commands[index];
+            this.command.index = index;
+            this.command.interval = new Interval();
+            this.input(this.command);
+            if (this.command.isValid) {
+                this.bluetoothSerial.write(this.command.requestData).then((status: string) => {
+                    this.command.status = status;
+                    this.command.interval.end();
+                    this.handleMessage(
+                        this.configuration.logCommandRequest,
+                        Message.format(
+                            MessageType.CommandRequest,
+                            this.driver.name(),
+                            this.command.request,
+                            this.command.interval.endedOn,
+                            this.command.interval.duration()
+                        )
+                    );
+                    setTimeout(() => {
+                        this.send(index++);
+                    }, this.timeout);
+                }).catch((exception: string) => {
+                    this.interval.end();
+                    this.handleError(
+                        MessageType.CommandError,
+                        this.driver.name(),
+                        this.command.request,
+                        exception,
+                        this.interval.endedOn,
+                        this.interval.duration()
+                    );
+                });
+            }
+            else {
+                this.interval.end();
+                this.handleError(
+                    MessageType.CommandInvalid,
+                    this.driver.name(),
+                    this.command.request,
+                    this.command.index
+                );
+            }
+        }
+        else {
+            this.subscribeRawData.unsubscribe();
+            this.interval.end();
+            this.bluetoothSerial.disconnect().then(() => {
+                this.handleMessage(
+                    this.configuration.logMessage,
+                    Message.format(
+                        MessageType.BluetoothDisconnectSuccess,
+                        this.driver.name(),
+                        this.interval.startedOn
+                    )
+                );
+                this.interval.end();
+                this.handleMessage(
+                    this.configuration.logMessage,
+                    Message.format(
+                        MessageType.MethodEndMessage,
+                        this.driver.name(),
+                        this.method,
+                        this.interval.endedOn,
+                        this.interval.duration()
+                    )
+                );
+            }).catch((exception: string) => {
+                this.connect.unsubscribe();
+                this.handleError(
+                    MessageType.BluetoothDisconnectError,
+                    this.driver.name(),
+                    exception,
+                    this.interval.duration()
+                );
+            });
+        }
+    }
+
+    private handleMessage(isEnabled: boolean, message: string) {
+        if (isEnabled) {
+            console.log(message);
+        }
+    }
+
+    private handleError(messageType?: MessageType, ...parameters) {
+        if (this.interval.endedOn == null) {
+            this.interval.end();
+        }
+        if (this.command != null) {
+            this.command.status = "Error";
+            if (this.command.interval.endedOn == null) {
+                this.command.interval.end();
+            }
+        }
         this.error = new Message(messageType, parameters);
         if (this.configuration == null || this.configuration.logError) {
             console.error(this.error.value);
         }
-        reject(this);
     }
 
-    private write(command: TremolElicomFPCommand, resolve, reject) {
-        let connect = this.bluetoothSerial.connect(this.configuration.device.address).subscribe(() => {
-            let subscribeRawData = this.bluetoothSerial.subscribeRawData().subscribe((responseRaw: ArrayBuffer) => {
-                this.output(command, responseRaw);
-                command.interval.end();
-                this.logMessage(this.configuration.logCommandResponse, Message.format(MessageType.CommandResponse, this.driver.name(), command.request, command.response, command.interval.endedOn, command.interval.duration()));
-                subscribeRawData.unsubscribe();
-                connect.unsubscribe();
-                resolve(this);
-            }, (exception: string) => {
-                subscribeRawData.unsubscribe();
-                connect.unsubscribe();
-                command.interval.end();
-                this.reject(command, reject, MessageType.CommandError, this.driver.name(), command.request, exception, command.interval.endedOn, command.interval.duration());
-            });
-            this.bluetoothSerial.write(command.requestData).then((status: string) => {
-                command.status = status;
-                command.interval.end();
-                this.logMessage(this.configuration.logCommandRequest, Message.format(MessageType.CommandRequest, this.driver.name(), command.request, command.interval.endedOn, command.interval.duration()));
-            }).catch((exception: string) => {
-                command.interval.end();
-                this.reject(command, reject, MessageType.CommandError, this.driver.name(), command.request, exception, command.interval.endedOn, command.interval.duration());
-            });
-        }, (exception: string) => {
-            connect.unsubscribe();
-            command.interval.end();
-            this.reject(command, reject, MessageType.BluetoothConnectError, this.driver.name(), exception, command.interval.duration());
-        });
-    }
-
-    private send(command: TremolElicomFPCommand): Promise<ISequence> {
-        let timeout = 1000;
-        if (this.configuration != null && this.configuration.timeout != null){
-            timeout = this.configuration.timeout;
+    public handleCommands() {
+        if (this.configuration == null) {
+            this.handleError(MessageType.ConfigurationNotDefinedError, this.driver.name());
         }
-        return new Promise<ISequence>((resolve, reject) => {
-            setTimeout(() => {
-                command.interval = new Interval();
-                if (this.configuration == null) {
-                    command.interval.end();
-                    this.reject(command, reject, MessageType.ConfigurationNotDefinedError, this.driver.name());
-                }
-                else if (this.configuration.device == null) {
-                    command.interval.end();
-                    this.reject(command, reject, MessageType.ConfigurationDeviceNotDefinedError, this.driver.name());
-                }
-                else {
-                    if (command.index == 0) {
-                        this.logMessage(this.configuration.logMessage, Message.format(MessageType.MethodStartMessage, this.driver.name(), this.method, this.interval.startedOn));
-                    }
-                    this.valid(command);
-                    if (command.isValid) {
-                        this.input(command);
-                        this.bluetoothSerial.isEnabled().then(() => {
-                            this.bluetoothSerial.isConnected().then(() => {
-                                this.bluetoothSerial.disconnect().then(() => {
-                                    this.write(command, resolve, reject);
-                                }).catch((exception: string) => {
-                                    command.interval.end();
-                                    this.reject(command, reject, MessageType.BluetoothDisconnectError, this.driver.name(), exception, command.interval.duration());
-                                });
-                            }).catch(() => {
-                                this.write(command, resolve, reject);
-                            });
-                        }).catch(() => {
-                            command.interval.end();
-                            this.reject(command, reject, MessageType.BluetoothNotEnabledError, this.driver.name());
-                        });
-                    }
-                    else {
-                        command.interval.end();
-                        this.reject(command, reject, MessageType.CommandInvalid, this.driver.name(), command.request, command.index);
-                    }
-                }
-            }, timeout);
-        });
-    }
-
-    public async handle(): Promise<ISequence> {
-        try {
-            for (let index = 0; index < this.commands.length; index++) {
-                await this.send(this.commands[index]);
-            }
-            this.interval.end();
-            this.logMessage(this.configuration.logMessage, Message.format(MessageType.MethodEndMessage, this.driver.name(), this.method, this.interval.endedOn, this.interval.duration()));
-            return new Promise<ISequence>((resolve, reject) => {
-                resolve(this);
-            });
+        else if (this.configuration.device == null) {
+            this.handleError(MessageType.ConfigurationDeviceNotDefinedError, this.driver.name());
         }
-        catch {
-            return new Promise<ISequence>((resolve, reject) => {
-                reject(this);
+        else {
+            this.handleMessage(
+                this.configuration.logMessage,
+                Message.format(
+                    MessageType.MethodStartMessage,
+                    this.driver.name(),
+                    this.method,
+                    this.interval.startedOn
+                )
+            );
+            this.bluetoothSerial.isEnabled().then(() => {
+                this.subscribeRawData = this.bluetoothSerial.subscribeRawData().subscribe((responseRaw: ArrayBuffer) => {
+                    this.output(this.command, responseRaw);
+                    this.command.interval.end();
+                    this.handleMessage(
+                        this.configuration.logCommandResponse,
+                        Message.format(
+                            MessageType.CommandResponse,
+                            this.driver.name(),
+                            this.command.request,
+                            this.command.response,
+                            this.command.interval.endedOn,
+                            this.command.interval.duration()
+                        )
+                    );
+                }, (exception: string) => {
+                    this.interval.end();
+                    this.handleError(
+                        MessageType.CommandError,
+                        this.driver.name(),
+                        this.command.request,
+                        exception,
+                        this.interval.endedOn,
+                        this.interval.duration()
+                    );
+                });
+                this.bluetoothSerial.isConnected().then(() => {
+                    this.bluetoothSerial.disconnect().then(() => {
+                        this.interval.end();
+                        this.handleMessage(
+                            this.configuration.logMessage,
+                            Message.format(
+                                MessageType.BluetoothDisconnectSuccess,
+                                this.driver.name(),
+                                this.interval.startedOn
+                            )
+                        );
+                        this.start();
+                    }).catch((exception: string) => {
+                        this.interval.end();
+                        this.handleError(
+                            MessageType.BluetoothDisconnectError,
+                            this.driver.name(),
+                            exception,
+                            this.interval.duration()
+                        );
+                    });
+                }).catch(() => {
+                    this.start();
+                });
+            }).catch(() => {
+                this.handleError(
+                    MessageType.BluetoothNotEnabledError,
+                    this.driver.name()
+                );
             });
         }
     }

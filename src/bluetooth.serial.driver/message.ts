@@ -7,7 +7,9 @@ export enum MessageType {
     ConfigurationDeviceNotDefinedError = 'Driver [{0}]: error - configuration device not defined.',
 
     BluetoothNotEnabledError = 'Driver [{0}]: status - bluetooth not enabled.',
+    BluetoothDisconnectSuccess = 'Driver [{0}]: success - bluetooth has been successfully disconnected within [{1}] milliseconds.',
     BluetoothDisconnectError = 'Driver [{0}]: error - bluetooth disconnecting exception [{1}] has occurred within [{2}] milliseconds.',
+    BluetoothConnectSuccess = 'Driver [{0}]: success - bluetooth has been successfully connected within [{1}] milliseconds.',
     BluetoothConnectError = 'Driver [{0}]: error - bluetooth connecting exception [{1}] has occurred within [{2}] milliseconds.',
 
     CommandInvalid = 'Driver [{0}]: error - command [{1}] at [{2}] index has invalid format.',
@@ -17,7 +19,7 @@ export enum MessageType {
 
     MethodStartMessage = 'Driver [{0}]: message - method [{1}] has been started at [{2}].',
     MethodEndMessage = 'Driver [{0}]: message - method [{1}] has been ended at [{2}] within [{3}] milliseconds.'
-    
+
 }
 
 export class Message {
