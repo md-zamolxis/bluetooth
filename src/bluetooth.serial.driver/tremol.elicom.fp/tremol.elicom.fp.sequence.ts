@@ -96,6 +96,7 @@ export class TremolElicomFPSequence implements ISequence {
         }, (exception: string) => {
             this.interval.end();
             this.handleError(
+                true,
                 MessageType.BluetoothConnectError,
                 this.driver.name(),
                 exception,
@@ -104,10 +105,46 @@ export class TremolElicomFPSequence implements ISequence {
         });
     }
 
-    private send(index: number) {
-        if (this.error != null) {
-            index == this.commands.length;
+    private end() {
+        if (this.subscribeRawData != null) {
+            this.subscribeRawData.unsubscribe();
         }
+        if (this.connect != null) {
+            this.interval.end();
+            this.bluetoothSerial.disconnect().then(() => {
+                this.handleMessage(
+                    this.configuration.logMessage,
+                    Message.format(
+                        MessageType.BluetoothDisconnectSuccess,
+                        this.driver.name(),
+                        this.interval.startedOn
+                    )
+                );
+                this.interval.end();
+                this.handleMessage(
+                    this.configuration.logMessage,
+                    Message.format(
+                        MessageType.MethodEndMessage,
+                        this.driver.name(),
+                        this.method,
+                        this.interval.endedOn,
+                        this.interval.duration()
+                    )
+                );
+            }).catch((exception: string) => {
+                this.connect.unsubscribe();
+                this.handleError(
+                    false,
+                    MessageType.BluetoothDisconnectError,
+                    this.driver.name(),
+                    exception,
+                    this.interval.duration()
+                );
+            });
+        }
+    }
+
+    private send(index: number) {
         if (index < this.commands.length) {
             this.command = this.commands[index];
             this.command.index = index;
@@ -133,6 +170,7 @@ export class TremolElicomFPSequence implements ISequence {
                 }).catch((exception: string) => {
                     this.interval.end();
                     this.handleError(
+                        true,
                         MessageType.CommandError,
                         this.driver.name(),
                         this.command.request,
@@ -145,6 +183,7 @@ export class TremolElicomFPSequence implements ISequence {
             else {
                 this.interval.end();
                 this.handleError(
+                    true,
                     MessageType.CommandInvalid,
                     this.driver.name(),
                     this.command.request,
@@ -153,37 +192,7 @@ export class TremolElicomFPSequence implements ISequence {
             }
         }
         else {
-            this.subscribeRawData.unsubscribe();
-            this.interval.end();
-            this.bluetoothSerial.disconnect().then(() => {
-                this.handleMessage(
-                    this.configuration.logMessage,
-                    Message.format(
-                        MessageType.BluetoothDisconnectSuccess,
-                        this.driver.name(),
-                        this.interval.startedOn
-                    )
-                );
-                this.interval.end();
-                this.handleMessage(
-                    this.configuration.logMessage,
-                    Message.format(
-                        MessageType.MethodEndMessage,
-                        this.driver.name(),
-                        this.method,
-                        this.interval.endedOn,
-                        this.interval.duration()
-                    )
-                );
-            }).catch((exception: string) => {
-                this.connect.unsubscribe();
-                this.handleError(
-                    MessageType.BluetoothDisconnectError,
-                    this.driver.name(),
-                    exception,
-                    this.interval.duration()
-                );
-            });
+            this.end();
         }
     }
 
@@ -193,7 +202,7 @@ export class TremolElicomFPSequence implements ISequence {
         }
     }
 
-    private handleError(messageType?: MessageType, ...parameters) {
+    private handleError(end: boolean, messageType?: MessageType, ...parameters) {
         if (this.interval.endedOn == null) {
             this.interval.end();
         }
@@ -207,14 +216,25 @@ export class TremolElicomFPSequence implements ISequence {
         if (this.configuration == null || this.configuration.logError) {
             console.error(this.error.value);
         }
+        if (end) {
+            this.end();
+        }
     }
 
     public handleCommands() {
         if (this.configuration == null) {
-            this.handleError(MessageType.ConfigurationNotDefinedError, this.driver.name());
+            this.handleError(
+                false, 
+                MessageType.ConfigurationNotDefinedError, 
+                this.driver.name()
+            );
         }
         else if (this.configuration.device == null) {
-            this.handleError(MessageType.ConfigurationDeviceNotDefinedError, this.driver.name());
+            this.handleError(
+                false, 
+                MessageType.ConfigurationDeviceNotDefinedError, 
+                this.driver.name()
+            );
         }
         else {
             this.handleMessage(
@@ -244,6 +264,7 @@ export class TremolElicomFPSequence implements ISequence {
                 }, (exception: string) => {
                     this.interval.end();
                     this.handleError(
+                        true,
                         MessageType.CommandError,
                         this.driver.name(),
                         this.command.request,
@@ -267,6 +288,7 @@ export class TremolElicomFPSequence implements ISequence {
                     }).catch((exception: string) => {
                         this.interval.end();
                         this.handleError(
+                            true,
                             MessageType.BluetoothDisconnectError,
                             this.driver.name(),
                             exception,
@@ -278,6 +300,7 @@ export class TremolElicomFPSequence implements ISequence {
                 });
             }).catch(() => {
                 this.handleError(
+                    false,
                     MessageType.BluetoothNotEnabledError,
                     this.driver.name()
                 );

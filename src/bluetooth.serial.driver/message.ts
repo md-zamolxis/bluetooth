@@ -12,7 +12,7 @@ export enum MessageType {
     BluetoothConnectSuccess = 'Driver [{0}]: success - bluetooth has been successfully connected within [{1}] milliseconds.',
     BluetoothConnectError = 'Driver [{0}]: error - bluetooth connecting exception [{1}] has occurred within [{2}] milliseconds.',
 
-    CommandInvalid = 'Driver [{0}]: error - command [{1}] at [{2}] index has invalid format.',
+    CommandInvalid = 'Driver [{0}]: invalid - command [{1}] at [{2}] index has invalid format.',
     CommandRequest = 'Driver [{0}]: request - command [{1}] has been requested at [{2}] within [{3}] milliseconds.',
     CommandResponse = 'Driver [{0}]: response - command [{1}] has returned a response [{2}] at [{3}] within [{4}] milliseconds.',
     CommandError = 'Driver [{0}]: error - command [{1}] has thrown an exception [{2}] at [{3}] within [{4}] milliseconds.',

@@ -5,7 +5,6 @@ import { IVat } from "../model/vat";
 import { ITender } from "../model/tender";
 import { BluetoothSerial } from "@ionic-native/bluetooth-serial";
 import { TremolElicomFPSequence } from "./tremol.elicom.fp.sequence";
-import { Message, MessageType } from "../message";
 import { ISequence } from "../sequence";
 
 export class TremolElicomFPDriver implements IDriver {
@@ -15,6 +14,7 @@ export class TremolElicomFPDriver implements IDriver {
 
     private handlePromise(sequence: TremolElicomFPSequence): Promise<ISequence> {
         return new Promise<ISequence>((resolve, reject) => {
+            sequence.handleCommands();
             if (sequence.error == null) {
                 resolve(sequence);
             }
@@ -30,7 +30,6 @@ export class TremolElicomFPDriver implements IDriver {
 
     public status(configuration: Configuration): Promise<ISequence> {
         let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'status', [{ request: ' ' }]);
-        sequence.handleCommands();
         return this.handlePromise(sequence);
     }
 
@@ -44,19 +43,16 @@ export class TremolElicomFPDriver implements IDriver {
             { request: '9' },
             { request: '01;0   ;0;0;0' },
         ]);
-        sequence.handleCommands();
         return this.handlePromise(sequence);
     }
 
     public printX(configuration: Configuration): Promise<ISequence> {
         let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'printX', [{ request: 'IX' }]);
-        sequence.handleCommands();
         return this.handlePromise(sequence);
     }
 
     public printZ(configuration: Configuration): Promise<ISequence> {
         let sequence = new TremolElicomFPSequence(this.bluetoothSerial, configuration, this, 'printZ', [{ request: 'IZ' }]);
-        sequence.handleCommands();
         return this.handlePromise(sequence);
     }
 
